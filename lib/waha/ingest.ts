@@ -555,6 +555,18 @@ function bodyOf(p: WahaPayload): string | null {
   // propósito: a forma NOWEB varia por tipo de mensagem e exigi-la aqui só
   // criaria uma porta nova de descartar a mensagem inteira. O estreitamento é
   // explícito, no mesmo estilo do `cm as {…}` logo abaixo.
+  // Catálogos do WhatsApp Business chegam sem body ou mídia normalizada.
+  // O conteúdo é um productMessage, confirmado no webhook NOWEB da Dolce.
+  const produto = (msg as { productMessage?: unknown }).productMessage;
+  if (produto && typeof produto === "object" && !Array.isArray(produto)) {
+    const ficha = (produto as { product?: unknown }).product;
+    if (ficha && typeof ficha === "object" && !Array.isArray(ficha)) {
+      const titulo = (ficha as { title?: unknown }).title;
+      return typeof titulo === "string" && titulo.trim()
+        ? `Catálogo: ${titulo.trim()}`
+        : "Catálogo enviado";
+    }
+  }
   const cm = (msg as { contactMessage?: unknown }).contactMessage;
   if (cm && typeof cm === "object") {
     const o = cm as { vcard?: string; displayName?: string };
@@ -1424,7 +1436,7 @@ async function handleOutboundFromUserPhone(
   // como `fromMe`, e só o dedup por `external_id` a reconhece como nossa.
   const grupo = grupoDoEnvio(p, chatId);
   if (!p.id) return;
-  if (!p.body && !mediaUrlOf(p) && !p.hasMedia) return;
+  if (!bodyOf(p) && !mediaUrlOf(p) && !p.hasMedia) return;
   // Idem inbound. Aqui o caso que mais dói é o chatId vazio: é literalmente o
   // defeito do #108 — mensagem que o dono digitou no celular sem `to`, sem id
   // composto e sem `from`. Se voltar a acontecer por um formato novo, agora sai

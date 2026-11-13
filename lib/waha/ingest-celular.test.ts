@@ -192,6 +192,26 @@ const CELULAR_NOWEB: WahaPayload = {
 };
 
 describe("mensagem digitada no celular do dono (fromMe)", () => {
+  it("registra ficha de catálogo enviada pelo celular sem body nem mídia", async () => {
+    const { admin, messages } = bancoDeMentira();
+    const catalogo: WahaPayload = {
+      ...CELULAR_NOWEB,
+      body: null,
+      _data: { message: { productMessage: { product: { title: "Chalé 46", productId: "123" } } } },
+    };
+    await dispatchWahaEvent(admin as never, SESSION as never, envelope(catalogo), "req-catalogo");
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ direction: "outbound", sent_via: "external_device", type: "text", body: "Catálogo: Chalé 46" });
+    await dispatchWahaEvent(admin as never, SESSION as never, envelope(catalogo), "req-repetido");
+    expect(messages).toHaveLength(1);
+  });
+
+  it("não inventa resposta para conteúdo desconhecido sem texto", async () => {
+    const { admin, messages } = bancoDeMentira();
+    await dispatchWahaEvent(admin as never, SESSION as never, envelope({ ...CELULAR_NOWEB, body: null, _data: { message: { outroEvento: {} } } }), "req-desconhecido");
+    expect(messages).toHaveLength(0);
+  });
+
   it("NOWEB sem `to`: a mensagem é gravada como outbound", async () => {
     const { admin, messages, rpcs } = bancoDeMentira();
 
